@@ -1,26 +1,45 @@
-pragma solidity ^0.4.4;
+pragma solidity ^0.4.11;
 
 contract Archangel {
+  address owner;
   mapping (string => string) registry;
-  mapping (address => bool) public permissions;
+  mapping (address => bool) permissions;
+
+  modifier ownerOnly {
+    require (msg.sender == owner);
+    _;
+  }
+
+  modifier permittedOnly {
+    if (!permissions[msg.sender]) {
+      NoWritePermission(msg.sender);
+      return;
+    }
+    _;
+  }
 
   event Registration(string _key, string _payload);
   event NoWritePermission(address _addr);
   event DuplicateKey(string _key);
 
   function Archangel() {
-    permissions[tx.origin] = true;
+    owner = msg.sender;
+    permissions[msg.sender] = true;
   } // Archangel
 
   function hasPermission(address addr) constant returns(bool) {
     return permissions[addr];
   } // hasPermissions
 
-  function store(string key, string payload) {
-    if (!permissions[tx.origin]) {
-      NoWritePermission(tx.origin);
-      return;
-    }
+  function grantPermission(address addr) ownerOnly {
+    permissions[addr] = true;
+  } // grantPermission
+
+  function removePermission(address addr) ownerOnly {
+    permissions[addr] = false;
+  } // removePermission
+
+  function store(string key, string payload) permittedOnly {
     if (bytes(registry[key]).length != 0) {
       DuplicateKey(key);
       return;
