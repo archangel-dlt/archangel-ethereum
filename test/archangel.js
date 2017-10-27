@@ -1,6 +1,7 @@
 const Archangel = artifacts.require('./Archangel.sol');
 
 // Doesn't yet check for emitted events
+const no_previous_key = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 contract('Archangel', (accounts) => {
   const owner = accounts[0];
@@ -32,7 +33,7 @@ contract('Archangel', (accounts) => {
 
     const payload = await instance.fetch('fruit');
 
-    assert.equal(payload, 'melon');
+    assert.equal(payload[0], 'melon');
   });
 
   it('non-owner cannot write', async() => {
@@ -42,7 +43,7 @@ contract('Archangel', (accounts) => {
 
     const payload = await instance.fetch('pet', { from: other_actor });
 
-    assert.equal(payload, '')
+    assert.equal(payload[0], '')
   });
 
   it('non-owner has permission once granted', async() => {
@@ -69,7 +70,7 @@ contract('Archangel', (accounts) => {
 
     const payload = await instance.fetch('grain', { from: other_actor });
 
-    assert.equal(payload, 'barley')
+    assert.equal(payload[0], 'barley')
   });
 
   it('non-owner can not write when permission revoked', async() => {
@@ -78,12 +79,12 @@ contract('Archangel', (accounts) => {
     await instance.grantPermission(other_actor);
     await instance.store('tea', 'assam', { from: other_actor });
     const tea = await instance.fetch('tea', { from: other_actor });
-    assert.equal(tea, 'assam')
+    assert.equal(tea[0], 'assam')
 
     await instance.removePermission(other_actor);
     await instance.store('coffee', 'takengon', { from: other_actor });
     const coffee = await instance.fetch('coffee', { from: other_actor });
-    assert.equal(coffee, '')
+    assert.equal(coffee[0], '')
   });
 
   it('non-owner can read', async() => {
@@ -93,6 +94,79 @@ contract('Archangel', (accounts) => {
 
     const payload = await instance.fetch('insect', { from: reader });
 
-    assert.equal(payload, 'housefly')
+    assert.equal(payload[0], 'housefly')
+  });
+});
+
+
+contract('can store multiple identical payloads per key', () => {
+  it('store the same item multiple times', async() => {
+    const instance = await Archangel.deployed();
+    const key = '2000AD';
+    const value = 'Featuring Judge Dredd';
+
+    const repeat = 7;
+    for (let i = 0; i != repeat; ++i)
+      await instance.store(key, value);
+
+    const head = await instance.fetch(key);
+    assert.equal(head[0], value);
+    assert.notEqual(head[1], no_previous_key);
+
+    let past_key = head[1];
+    for (let i = 1; i != (repeat-1); ++i) {
+      const next = await instance.fetchPrevious(past_key);
+      assert.equal(next[0], value);
+      assert.notEqual(next[1], no_previous_key);
+      past_key = next[1];
+    } // for ...
+
+    const last = await instance.fetchPrevious(past_key);
+    assert.equal(last[0], value);
+    assert.equal(last[1], no_previous_key);
+  });
+});
+
+contract('can store multiple payloads per key', () => {
+  let instance;
+  const mountain_goats = 'The Mountain Goats';
+  const death_metal_band_in_denton = 'The Best Ever Death Metal Band in Denton';
+  const foreign_object = 'Foreign Object';
+  const wear_black = 'Wear Black';
+
+  it('store an item and read it back', async() => {
+    instance = await Archangel.deployed();
+    await instance.store(mountain_goats, death_metal_band_in_denton);
+
+    const payload = await instance.fetch(mountain_goats);
+    assert.equal(payload[0], death_metal_band_in_denton);
+    assert.equal(payload[1], no_previous_key);
+    assert.deepEqual(payload, [death_metal_band_in_denton, no_previous_key])
+  });
+
+  it('store second item, read it back, follow link to get first object', async() => {
+    await instance.store(mountain_goats, foreign_object);
+
+    const payload = await instance.fetch(mountain_goats);
+    assert.equal(payload[0], foreign_object);
+    assert.notEqual(payload[1], no_previous_key);
+
+    const prev_payload = await instance.fetchPrevious(payload[1]);
+    assert.deepEqual(prev_payload, [death_metal_band_in_denton, no_previous_key]);
+  });
+
+  it('store a third item, and walk all the way back to the first', async() => {
+    await instance.store(mountain_goats, wear_black);
+
+    const payload = await instance.fetch(mountain_goats);
+    assert.equal(payload[0], wear_black);
+    assert.notEqual(payload[1], no_previous_key);
+
+    const prev_payload = await instance.fetchPrevious(payload[1]);
+    assert.equal(prev_payload[0], foreign_object);
+    assert.notEqual(prev_payload[1], no_previous_key);
+
+    const prev_prev_payload = await instance.fetchPrevious(prev_payload[1]);
+    assert.deepEqual(prev_prev_payload, [death_metal_band_in_denton, no_previous_key]);
   });
 });
