@@ -4,9 +4,9 @@ Ethereum smart contract for the Archangel DLT system.
 
 ## Development
 
-This project uses the [truffle](http://truffleframework.com) and [testrpc](https://github.com/ethereumjs/testrpc) for development and testing.
+This project uses the [truffle](http://truffleframework.com) and [ganache-cli](http://truffleframework.com/ganache) for development and testing.
 
-To run the tests, start `testrpc` then run `truffle test`.
+To run the tests, start `ganache-cli` then run `truffle test`.
 
 ## Contributing
 
