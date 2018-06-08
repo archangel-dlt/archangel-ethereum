@@ -1,4 +1,4 @@
-## Copyright (c) 2017 Archangel project contributors
+## Copyright (c) 2017-2018 Archangel project contributors
 
 # MIT License
 
