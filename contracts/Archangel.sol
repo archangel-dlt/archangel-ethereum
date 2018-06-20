@@ -8,9 +8,9 @@ contract Archangel {
     bytes32 previous_key;
   }
 
-  mapping (string => Payload) registry;
-  mapping (bytes32 => Payload) previous_versions;
-  mapping (address => string) permissions;
+  mapping (string => Payload) private registry;
+  mapping (bytes32 => Payload) private previous_versions;
+  mapping (address => string) private permissions;
 
   modifier ownerOnly {
     require (msg.sender == owner);
@@ -82,7 +82,7 @@ contract Archangel {
        return previous_key;
 
     // move existing payload into previous_versions
-    bytes32 hashed_key = sha3(key);
+    bytes32 hashed_key = keccak256(abi.encodePacked(key));
 
     bytes32 prior_key = moveBack(hashed_key);
 
@@ -100,7 +100,7 @@ contract Archangel {
       return previous_key;
 
     // new version key
-    bytes32 version_key = sha3(key, prior.payload, prior.previous_key);
+    bytes32 version_key = keccak256(abi.encodePacked(key, prior.payload, prior.previous_key));
     previous_versions[version_key].payload = prior.payload;
     previous_versions[version_key].previous_key = prior.previous_key;
     return version_key;
