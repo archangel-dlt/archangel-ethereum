@@ -1,6 +1,5 @@
 const Archangel = artifacts.require('./Archangel.sol');
 
-// Doesn't yet check for emitted events
 const no_previous_key = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 contract('Archangel', (accounts) => {
@@ -34,6 +33,8 @@ contract('Archangel', (accounts) => {
 
       await instance.store('fruit', 'melon');
 
+      await expectRegistration(instance, 'fruit', 'melon', owner);
+
       const payload = await instance.fetch('fruit');
 
       assert.equal(payload[0], 'melon');
@@ -43,6 +44,8 @@ contract('Archangel', (accounts) => {
       const instance = await Archangel.deployed();
 
       await instance.store('pet', 'lovely black dog', { from: other_actor });
+
+      await expectNoWritePermission(instance, other_actor);
 
       const payload = await instance.fetch('pet', { from: other_actor });
 
@@ -174,3 +177,54 @@ contract('can store multiple payloads per key', () => {
     assert.deepEqual(prev_prev_payload, [death_metal_band_in_denton, no_previous_key]);
   });
 });
+
+///////////////////////
+function expectRegistration(instance, key, payload, addr) {
+  return assertEvent(instance, {
+    event: 'Registration',
+    args: { _key: key, _payload: payload, _addr: addr }
+  });
+} // expectRegistration
+
+function expectNoWritePermission(instance, addr) {
+  return assertEvent(instance, {
+    event: 'NoWritePermission',
+    args: { _addr: addr }
+  });
+} // expectNoWritePermission
+
+function expectPermissionGranted(instance, addr, name) {
+  return assertEvent(instance, {
+    event: 'PermissionGranted',
+    args: { _addr: addr,  _name: name }
+  });
+} // expectPermissionGranted
+
+function expectPermissionRemoved(instance, addr, name) {
+  return assertEvent(instance, {
+    event: 'PermissionRemoved',
+    args: { _addr: addr,  _name: name }
+  });
+} // expectPermissionRemoved
+
+function argsMatch(expected, actual) {
+  for (const k of Object.keys(expected))
+    if (expected[k] !== actual[k])
+      return false;
+  return true;
+} // argsMatch
+
+function assertEvent(contract, filter) {
+  return new Promise((resolve, reject) => {
+    const event = contract[filter.event]();
+    event.watch();
+    event.get((error, logs) => {
+      for (const evt of logs)
+        if (argsMatch(filter.args, evt.args))
+          return resolve();
+      reject(new Error(`Failed to find ${filter.event} event for ${JSON.stringify(filter.args)}`));
+    });
+    event.stopWatching();
+  });
+} // assertEvent
+
