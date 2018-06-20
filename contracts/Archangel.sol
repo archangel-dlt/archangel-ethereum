@@ -10,7 +10,7 @@ contract Archangel {
 
   mapping (string => Payload) registry;
   mapping (bytes32 => Payload) previous_versions;
-  mapping (address => bool) permissions;
+  mapping (address => string) permissions;
 
   modifier ownerOnly {
     require (msg.sender == owner);
@@ -18,7 +18,7 @@ contract Archangel {
   }
 
   modifier permittedOnly {
-    if (!permissions[msg.sender]) {
+    if (bytes(permissions[msg.sender]).length == 0) {
       emit NoWritePermission(msg.sender);
       return;
     }
@@ -32,19 +32,26 @@ contract Archangel {
 
   constructor() public {
     owner = msg.sender;
-    permissions[msg.sender] = true;
+    permissions[msg.sender] = 'contract';
   } // Archangel
 
   function hasPermission(address addr) external constant returns(bool) {
-    return permissions[addr];
+    return bytes(permissions[addr]).length != 0;
   } // hasPermissions
 
-  function grantPermission(address addr) external ownerOnly {
-    permissions[addr] = true;
+  function grantPermission(address addr, string name) external ownerOnly {
+    if (this.hasPermission(addr))
+      return;
+    permissions[addr] = name;
+    emit PermissionGranted(addr, name);
   } // grantPermission
 
   function removePermission(address addr) external ownerOnly {
-    permissions[addr] = false;
+    if (!this.hasPermission(addr))
+      return;
+    string memory revoked = permissions[addr];
+    delete permissions[addr];
+    emit PermissionRemoved(addr, revoked);
   } // removePermission
 
   function store(string key, string payload) external permittedOnly {

@@ -68,11 +68,13 @@ contract('Archangel', (accounts) => {
       const initial_permission = await instance.hasPermission(other_actor);
       assert(!initial_permission);
 
-      await instance.grantPermission(other_actor);
+      await instance.grantPermission(other_actor, 'other');
+      await expectPermissionGranted(instance, other_actor, 'other')
       const write_permission_granted = await instance.hasPermission(other_actor);
       assert(write_permission_granted);
 
       await instance.removePermission(other_actor);
+      await expectPermissionRemoved(instance, other_actor, 'other')
       const write_permission_revoked = await instance.hasPermission(other_actor);
       assert(!write_permission_revoked);
     })
@@ -80,7 +82,7 @@ contract('Archangel', (accounts) => {
     it('non-owner can write when given permission', async() => {
       const instance = await Archangel.deployed();
 
-      await instance.grantPermission(other_actor);
+      await instance.grantPermission(other_actor, 'other');
 
       await instance.store('grain', 'barley', { from: other_actor });
 
@@ -92,7 +94,7 @@ contract('Archangel', (accounts) => {
     it('non-owner can not write when permission revoked', async() => {
       const instance = await Archangel.deployed();
 
-      await instance.grantPermission(other_actor);
+      await instance.grantPermission(other_actor, 'other');
       await instance.store('tea', 'assam', { from: other_actor });
       const tea = await instance.fetch('tea', { from: other_actor });
       assert.equal(tea[0], 'assam')
