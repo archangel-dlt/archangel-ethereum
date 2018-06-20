@@ -83,8 +83,10 @@ contract('Archangel', (accounts) => {
       const instance = await Archangel.deployed();
 
       await instance.grantPermission(other_actor, 'other');
+      await expectPermissionGranted(instance, other_actor, 'other')
 
       await instance.store('grain', 'barley', { from: other_actor });
+      await expectRegistration(instance, 'grain', 'barley', other_actor);
 
       const payload = await instance.fetch('grain', { from: other_actor });
 
@@ -96,11 +98,13 @@ contract('Archangel', (accounts) => {
 
       await instance.grantPermission(other_actor, 'other');
       await instance.store('tea', 'assam', { from: other_actor });
+      await expectRegistration(instance, 'tea', 'assam', other_actor);
       const tea = await instance.fetch('tea', { from: other_actor });
       assert.equal(tea[0], 'assam')
 
       await instance.removePermission(other_actor);
       await instance.store('coffee', 'takengon', { from: other_actor });
+      await expectNoWritePermission(instance, other_actor);
       const coffee = await instance.fetch('coffee', { from: other_actor });
       assert.equal(coffee[0], '')
     })
