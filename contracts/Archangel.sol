@@ -8,9 +8,9 @@ contract Archangel {
     bytes32 previous_key;
   }
 
-  mapping (string => Payload) private registry;
-  mapping (bytes32 => Payload) private previous_versions;
-  mapping (address => bool) private permissions;
+  mapping (string => Payload) registry;
+  mapping (bytes32 => Payload) previous_versions;
+  mapping (address => bool) permissions;
 
   modifier ownerOnly {
     require (msg.sender == owner);
@@ -19,63 +19,65 @@ contract Archangel {
 
   modifier permittedOnly {
     if (!permissions[msg.sender]) {
-      NoWritePermission(msg.sender);
+      emit NoWritePermission(msg.sender);
       return;
     }
     _;
   }
 
-  event Registration(string _key, string _payload);
+  event Registration(address _addr, string _key, string _payload);
   event NoWritePermission(address _addr);
+  event PermissionGranted(address _addr, string _name);
+  event PermissionRemoved(address _addr, string _name);
 
-  function Archangel() {
+  constructor() public {
     owner = msg.sender;
     permissions[msg.sender] = true;
   } // Archangel
 
-  function hasPermission(address addr) constant returns(bool) {
+  function hasPermission(address addr) external constant returns(bool) {
     return permissions[addr];
   } // hasPermissions
 
-  function grantPermission(address addr) ownerOnly {
+  function grantPermission(address addr) external ownerOnly {
     permissions[addr] = true;
   } // grantPermission
 
-  function removePermission(address addr) ownerOnly {
+  function removePermission(address addr) external ownerOnly {
     permissions[addr] = false;
   } // removePermission
 
-  function store(string key, string payload) permittedOnly {
+  function store(string key, string payload) external permittedOnly {
     bytes32 previous_key = moveExisting(key);
 
-    var newPayload = registry[key];
+    Payload storage newPayload = registry[key];
     newPayload.payload = payload;
     newPayload.previous_key = previous_key;
-    Registration(key, payload);
+    emit Registration(msg.sender, key, payload);
   } // store
 
-  function fetch(string key) constant returns(string, bytes32) {
-    var payload = registry[key];
+  function fetch(string key) external constant returns(string, bytes32) {
+    Payload storage payload = registry[key];
     return (payload.payload, payload.previous_key);
   } // fetch
 
-  function fetchPrevious(bytes32 key) constant returns(string, bytes32) {
-    var payload = previous_versions[key];
+  function fetchPrevious(bytes32 key) external constant returns(string, bytes32) {
+    Payload storage payload = previous_versions[key];
     return (payload.payload, payload.previous_key);
   } // fetchPrevious
 
   //////////////////////////////////
   function moveExisting(string key) private returns (bytes32) {
     bytes32 previous_key;
-    var existing = registry[key];
+    Payload storage existing = registry[key];
 
     if (bytes(existing.payload).length == 0)
        return previous_key;
 
     // move existing payload into previous_versions
-    var hashed_key = sha3(key);
+    bytes32 hashed_key = sha3(key);
 
-    var prior_key = moveBack(hashed_key);
+    bytes32 prior_key = moveBack(hashed_key);
 
     previous_versions[hashed_key].payload = existing.payload;
     previous_versions[hashed_key].previous_key = prior_key;
@@ -85,13 +87,13 @@ contract Archangel {
 
   function moveBack(bytes32 key) private returns(bytes32) {
     bytes32 previous_key;
-    var prior = previous_versions[key];
+    Payload storage prior = previous_versions[key];
 
     if (bytes(prior.payload).length == 0)
       return previous_key;
 
     // new version key
-    var version_key = sha3(key, prior.payload, prior.previous_key);
+    bytes32 version_key = sha3(key, prior.payload, prior.previous_key);
     previous_versions[version_key].payload = prior.payload;
     previous_versions[version_key].previous_key = prior.previous_key;
     return version_key;
