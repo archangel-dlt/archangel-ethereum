@@ -26,6 +26,7 @@ contract Archangel {
   }
 
   event Registration(address _addr, string _key, string _payload);
+  event Update(address _addr, string _key, string _payload);
   event NoWritePermission(address _addr);
   event PermissionGranted(address _addr, string _name);
   event PermissionRemoved(address _addr, string _name);
@@ -56,11 +57,16 @@ contract Archangel {
 
   function store(string key, string payload) external permittedOnly {
     bytes32 previous_key = moveExisting(key);
+    bytes32 null_key;
 
     Payload storage newPayload = registry[key];
     newPayload.payload = payload;
     newPayload.previous_key = previous_key;
-    emit Registration(msg.sender, key, payload);
+
+    if (previous_key == null_key)
+      emit Registration(msg.sender, key, payload);
+    else
+      emit Update(msg.sender, key, payload);
   } // store
 
   function fetch(string key) external constant returns(string, bytes32) {

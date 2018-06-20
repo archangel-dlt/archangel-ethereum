@@ -150,6 +150,7 @@ contract('can store multiple payloads per key', () => {
   it('store an item and read it back', async() => {
     instance = await Archangel.deployed();
     await instance.store(mountain_goats, death_metal_band_in_denton);
+    await expectRegistration(instance, mountain_goats, death_metal_band_in_denton);
 
     const payload = await instance.fetch(mountain_goats);
     assert.equal(payload[0], death_metal_band_in_denton);
@@ -159,6 +160,7 @@ contract('can store multiple payloads per key', () => {
 
   it('store second item, read it back, follow link to get first object', async() => {
     await instance.store(mountain_goats, foreign_object);
+    await expectUpdate(instance, mountain_goats, foreign_object);
 
     const payload = await instance.fetch(mountain_goats);
     assert.equal(payload[0], foreign_object);
@@ -170,6 +172,7 @@ contract('can store multiple payloads per key', () => {
 
   it('store a third item, and walk all the way back to the first', async() => {
     await instance.store(mountain_goats, wear_black);
+    await expectUpdate(instance, mountain_goats, wear_black);
 
     const payload = await instance.fetch(mountain_goats);
     assert.equal(payload[0], wear_black);
@@ -185,9 +188,16 @@ contract('can store multiple payloads per key', () => {
 });
 
 ///////////////////////
-function expectRegistration(instance, key, payload, addr) {
+function expectRegistration(instance, key, payload, addr = null) {
   return assertEvent(instance, {
     event: 'Registration',
+    args: { _key: key, _payload: payload, _addr: addr }
+  });
+} // expectRegistration
+
+function expectUpdate(instance, key, payload, addr = null) {
+  return assertEvent(instance, {
+    event: 'Update',
     args: { _key: key, _payload: payload, _addr: addr }
   });
 } // expectRegistration
@@ -215,7 +225,7 @@ function expectPermissionRemoved(instance, addr, name) {
 
 function argsMatch(expected, actual) {
   for (const k of Object.keys(expected))
-    if (expected[k] !== actual[k])
+    if (expected[k] && (expected[k] !== actual[k]))
       return false;
   return true;
 } // argsMatch
