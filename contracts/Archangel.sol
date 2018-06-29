@@ -33,7 +33,9 @@ contract Archangel {
 
   constructor() public {
     owner = msg.sender;
-    permissions[msg.sender] = 'contract';
+    string memory name = 'contract';
+    permissions[msg.sender] = name;
+    emit PermissionGranted(owner, name);
   } // Archangel
 
   function hasPermission(address addr) external constant returns(bool) {
