@@ -5,6 +5,11 @@ module.exports = {
       port: 8545,
       network_id: "3" // Match any network id
     },
+    rinkeyby: {
+      host: "localhost",
+      port: 8545,
+      network_id: 4,
+      from: "0x9071fe4e16752193d03e9d0b2a5c0f4db5a3c70f"
     archangel: {
       host: "localhost",
       port: 8545,
